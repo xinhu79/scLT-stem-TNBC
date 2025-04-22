@@ -1,0 +1,51 @@
+library(ggpubr)
+rm(list = ls())
+setwd("G:/20230307_PDX_WS/RESULT/DNA_WS_V2305/PART2_SUMMARY_WS")
+load("step1.raw.ws.RData")
+pre2_shannon_index <- vegan::diversity(pre2[, 3], index = 'shannon', base = exp(1))
+pre3_shannon_index <- vegan::diversity(pre3[, 3], index = 'shannon', base = exp(1))
+c1_shannon_index <- vegan::diversity(c1[, 3], index = 'shannon', base = exp(1))
+c2_shannon_index <- vegan::diversity(c2[, 3], index = 'shannon', base = exp(1))
+c3_shannon_index <- vegan::diversity(c3[, 3], index = 'shannon', base = exp(1))
+c4_shannon_index <- vegan::diversity(c4[, 3], index = 'shannon', base = exp(1))
+ac6_shannon_index <- vegan::diversity(ac6[, 3], index = 'shannon', base = exp(1))
+ac7_shannon_index <- vegan::diversity(ac7[, 3], index = 'shannon', base = exp(1))
+ac9_shannon_index <- vegan::diversity(ac9[, 3], index = 'shannon', base = exp(1))
+ac17_shannon_index <- vegan::diversity(ac17[, 3], index = 'shannon', base = exp(1))
+acac8_shannon_index <- vegan::diversity(acac8[, 3], index = 'shannon', base = exp(1))
+acac10_shannon_index <- vegan::diversity(acac10[, 3], index = 'shannon', base = exp(1))
+acac11_shannon_index <- vegan::diversity(acac11[, 3], index = 'shannon', base = exp(1))
+acac14_shannon_index <- vegan::diversity(acac14[, 3], index = 'shannon', base = exp(1))
+acac15_shannon_index <- vegan::diversity(acac15[, 3], index = 'shannon', base = exp(1))
+acac16_shannon_index <- vegan::diversity(acac16[, 3], index = 'shannon', base = exp(1))
+raw <- list(pre2, pre3, c1, c2, c3, c4, ac6, ac7, ac9, ac17, acac8,
+            #acac10,acac11,
+            acac14, acac15, acac16)
+res <- matrix(0, nrow = length(raw), ncol = 2)
+colnames(res) <- c("shannon_diversity", "group")
+for (i in 1:nrow(res)) {
+  res[i, 1] <- vegan::diversity(raw[[i]][, 3], index = 'shannon', base = exp(1)) }
+res[1:2, 2] <- "Pre"
+res[3:6, 2] <- "Vehicle"
+res[7:10, 2] <- "ACx1"
+res[11:14, 2] <- "ACx2"
+res <- as.data.frame(res)
+res$shannon_diversity <- as.numeric(res$shannon_diversity)
+res$group <- factor(res$group, levels = c("Pre", "Vehicle", "ACx1", "ACx2"))
+res <- res[which(res$group != "Pre"),]
+#res <- res[-6,]
+pdf("step1.summary.shannon diversity.v1.pdf", height = 6, width = 4)
+ggplot(res, aes(x = group, y = shannon_diversity, color = group, fill = group)) +
+  geom_boxplot(alpha = 0.7) + #半透明
+  theme_classic() + #或theme_bw()
+  labs(y = "Shannon Diversity Index") +
+  scale_fill_manual(values = c("#CC79A7", "#F0E442", "#009E73")) +
+  scale_color_manual(values = c("#CC79A7", "#F0E442", "#009E73")) +
+  stat_compare_means(comparisons = list(c("Vehicle", "ACx1"), c("Vehicle", "ACx2"), c("ACx1", "ACx2")), label = "p.signif", method = "t.test") +
+  theme(axis.text = element_text(colour = "black", size = 12),
+        axis.title = element_text(colour = "black", size = 12),
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+  geom_point(shape = 21, size = 2, # 点的形状和大小
+             position = position_jitterdodge(), # 让点散开
+             alpha = 1) #半透明
+dev.off()

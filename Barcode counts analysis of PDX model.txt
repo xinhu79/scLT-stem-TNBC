@@ -1,0 +1,56 @@
+library(ggplot2)
+library(scales)
+rm(list = ls())
+setwd("G:/20230307_PDX_WS/RESULT/plasmid_whitelist")
+ws <- read.table("step6.whitelist.txt")
+aa <- as.data.frame(table(ws$freq))
+aa$group <- "whitelist"
+aa$Var1 <- as.numeric(aa$Var1)
+p1 <- ggplot(aa, aes(x = Var1, y = Freq)) +
+  geom_vline(xintercept = 0, color = "black", size = 1) +
+  geom_hline(yintercept = 0, color = "black", size = 1) + # 添加y=0的辅助线
+  geom_point(color = "#336A98", size = 0.5) +         # 将点的size设置大一些比较好看
+  geom_bar(fill = "#336A98", stat = "identity", width = 0.01) + # 注意将width宽度设小
+  ylim(0, 800000) +
+  xlim(0, 2000) +
+  scale_x_continuous(trans = log_trans(), breaks = c(1:6, seq(1, 19, by = 10), seq(20, 100, by = 20), 500, 1000, 1500, 2000)) +
+  #coord_trans(x = squash_axis(40, 2000, 50))+
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_blank(),      # 消除竖条的背景线
+        legend.position = "None",
+        panel.border = element_blank(),
+        plot.title = element_text(hjust = 0.5)) +  # 标题居中，若无标题可不加
+  labs(x = "Counts per barcode", y = "Number of unique barcodes",
+       colour = "", linetype = "", fill = "")
+pdf("step7.whitelist.summary.pdf")
+p1
+dev.off()
+
+#(2) 累积分布曲线
+ws <- aa
+ws$group <- "Whitelist"
+p2 <- ggplot(ws, aes(x = Freq, color = group)) +
+  geom_vline(xintercept = 0, color = "black", size = 1) +
+  geom_hline(yintercept = 0, color = "black", size = 1) +
+  stat_ecdf( # ggplot2中的经验累积分布函数；geom=“step”为锯齿状，“smooth”为平滑状；size为线条粗细；pad=F，不从0开始
+    size = 0.5, geom = "smooth", pad = F) +
+  #xlim(1,2000)+
+  scale_x_continuous(trans = log_trans(), breaks = c(1:6, seq(1, 19, by = 10), seq(20, 100, by = 20), 500, 1000, 1500, 2000)) +
+  scale_y_continuous(position = "right") +
+  #coord_trans(x = squash_axis(40, 2000, 50))+
+  labs(x = "Counts per barcode", y = "Percentage of total unique barcodes",
+       colour = "", linetype = "", fill = "") +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_blank(),      # 消除竖条的背景线
+        legend.position = "None",
+        panel.border = element_blank(),
+        plot.title = element_text(hjust = 0.5))
+
+#(3)棒棒糖图+累积分布曲线一起画 暂时无法重叠，选择AI修图
+pdf("step7.whitelist.summary.v3.0.pdf")
+plot(p1)
+par(new = TRUE)
+plot(p2)
+dev.off()

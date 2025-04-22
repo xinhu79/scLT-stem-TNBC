@@ -1,0 +1,99 @@
+library(viridis)
+library(monocle)
+library(biomaRt)
+library(ggplot2)
+library(Seurat)
+rm(list=ls())
+setwd("E:/SCS/2022 PROJECT1/PART2 STEMNESS/result/Step3.Monocle/v221020.integrate")
+load("part2.all.harmony.tsne.filtered.anno3.RData")
+load("part0.cytotrace.selected.result.RData")
+table(test.seu@meta.data$celltype)
+
+# （1）整理数据
+anno_table <- test.seu@meta.data$celltype
+anno_table <- data.frame(anno_table)
+rownames(anno_table) <- rownames(test.seu@meta.data)
+colnames(anno_table) <- "celltype"
+head(anno_table)
+
+counts <- as.matrix(test.seu@assays$RNA@counts)
+
+pDat <- data.frame(cell=colnames(counts),celltype="undefined",stringsAsFactors = FALSE)
+row.names(pDat) <- pDat$cell
+pDat[rownames(anno_table),2] <- as.character(anno_table$celltype)
+head(pDat)
+
+mart <- biomaRt::useDataset("hsapiens_gene_ensembl",biomaRt::useMart("ensembl"))
+genes_table <- biomaRt::getBM(attributes = c("ensembl_gene_id","external_gene_name"),
+                              values=rownames(counts),mart=mart)
+rownames(genes_table) <- genes_table$ensembl_gene_id
+fDat <- genes_table
+colnames(fDat) <- c("ensembl_gene_id","gene_short_name")
+fDat <- fDat[fDat$gene_short_name %in% rownames(counts),]
+fDat <- fDat[!duplicated(fDat$gene_short_name),]
+rownames(fDat) <- fDat$gene_short_name
+counts <- counts[rownames(fDat),]
+
+genes <- data.frame(results$cytoGenes)
+genes$gene <- rownames(genes)
+sig.markers <- genes[(abs(as.numeric(as.vector(genes[,1])))>0.3),]
+head(rownames(sig.markers))
+cs <- intersect(rownames(counts),rownames(sig.markers))
+counts <- counts[cs,]
+fDat <- fDat[cs,]
+
+# （2）构建轨迹推断对象
+cds <- newCellDataSet(as.matrix(counts),phenoData = Biobase::AnnotatedDataFrame(pDat),
+                      featureData = Biobase::AnnotatedDataFrame(fDat))
+cds <- estimateSizeFactors(cds)
+cds <- estimateDispersions(cds)
+cds <- detectGenes(cds,min_expr = 0.1)
+print(head(fData(cds)))
+expressed_genes <- rownames(subset(fData(cds),num_cells_expressed >=10))
+length(expressed_genes)
+print(head(pData(cds)))
+diff_test_res <- differentialGeneTest(cds[expressed_genes,],fullModelFormulaStr = "~celltype")
+ordering_genes <- rownames(subset(diff_test_res,qval < 0.01))
+cds <- setOrderingFilter(cds,ordering_genes)
+
+cds <- reduceDimension(cds,max_components = 2,method="DDRTree")
+cds <- orderCells(cds)
+
+#（3）作图
+cds <- readRDS("part1.cds_cytotrace_toplot.root7.v1.0.rds") #（2）结果
+load("part0.monocle_cytotrace_orderinggenes.RData") #（2）结果
+p1 <- plot_cell_trajectory(cds, color_by = "celltype", cell_size = 0.3, show_branch_points = F) +
+  scale_color_manual(values = c("#FF0099","#E69F00","#56B4E9", "#009E73", "#F0E442", "#0072B2", "#CC79A7"))+
+  labs(fill = "Cluster") +
+  theme(legend.position = "right") +
+  guides(color = guide_legend(override.aes = list(size = 4, alpha = 1),
+                              title = 'scPC')) +
+  theme_classic() +
+  theme(axis.line = element_line(colour = "#000000", size = 1), #坐标轴线
+        #axis.line = element_blank(),
+        #panel.border = element_rect(fill=NA,color="black", size=1, linetype="solid"),
+        axis.ticks.length = unit(0.1, 'cm'), #坐标轴刻度
+        axis.text = element_text(colour = "#000000", size = 20), #坐标轴正文
+        axis.title = element_text(size = 20), #坐标轴标题
+        legend.text = element_text(size = 20), #图注正文
+        legend.title = element_text(size = 20), #图注标题
+        panel.grid = element_blank())
+p2 <- plot_cell_trajectory(cds,color_by = "State",cell_size = 0.2)
+p3 <- plot_cell_trajectory(cds,color_by = "Pseudotime",cell_size = 0.2)
+
+cds <- orderCells(cds,root_state = 6)
+pdf("part1._cytotrace_celltype_pseudotime.v1.0.pdf",height=8,width=8)
+plot_cell_trajectory(cds,color_by = "Pseudotime",cell_size = 0.2)
+dev.off()
+
+diff_test_res <- differentialGeneTest(cds[ordering_genes,],fullModelFormulaStr = "~sm.ns(Pseudotime)")
+diff_test_res <- diff_test_res[order(diff_test_res$qval), ]
+write.csv(diff_test_res,file="part3.pseudotime_diff_gene.csv",quote = F)
+diff_test_res <- read.csv("part3.pseudotime_diff_gene.csv",row.names = 1)
+sig_gene_names <- rownames(subset(diff_test_res,qval <0.1))
+pdf("part3.monocle_pseudo_diffgene.v2.0.pdf",height = 30,width = 15) #pseudotime相关基因，其实也很有价值，但是展示的少了
+plot_pseudotime_heatmap(cds[sig_gene_names[1:100],],
+                        #num_clusters = 3,
+                        cores=4,show_rownames = T)
+dev.off()
+

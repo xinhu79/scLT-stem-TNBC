@@ -1,0 +1,171 @@
+source(file = "E:/code_others/FigureYa153ccgraph.V2.0/gather_graph_node.R")
+source(file = "E:/code_others/FigureYa153ccgraph.V2.0/gather_graph_edge.R") #ccgraph需要的包df <- read.table("step2.dna.int.circle.pre.txt",header = T)
+colnames(df) <- c("term","genes","logFC")
+df$term <- factor(df$term,levels = c("Stem Cell","Early Luminal Progenitor", "Late Luminal Progenitor" ,
+                                     "Myoepithelial Progenitor","Ductal"))
+nl <- rep(1:length(unique(df$genes)))
+nl <- paste0("Barcode",nl)
+df$genes <- factor(df$genes,labels = nl)
+library(conflicted)
+conflict_prefer("select", "dplyr")
+nodes <- gather_graph_node(df, index = c("term", "genes"), value = "logFC", root="all")
+edges <- gather_graph_edge(df, index = c("term", "genes"), root = "all")
+nodes <- nodes %>% mutate_at(c("node.level","node.branch"),as.character)
+head(nodes, 10)
+graph <- tbl_graph(nodes, edges)
+# 用 `ggraph` 出图
+gc1 <- ggraph(graph, layout = 'dendrogram', circular = TRUE) +
+  # 使用 filter 参数去掉 root（前面设置为"all"）节点及与其相连的边
+  geom_edge_diagonal(aes(color = node1.node.branch,
+                         filter=node1.node.level!="all"),
+                     alpha = 0.6,edge_width=0.5) +
+  geom_node_point(aes(size = node.size,
+                      color = node.branch,
+                      filter=node.level!="all"), alpha = 0.5) +
+  scale_size(range = c(1,40)) + #做均一化处理，让点的大小介于range之间
+  theme(legend.position = "none") + #不画图例
+  # 点和边的配色
+  # 如果要改变边的配色，需要同时给边和点变色，否则会对应不上
+  scale_edge_color_brewer(palette = "Set2") + #用?scale_color_brewer查看更多配色方案
+  scale_color_brewer(palette = "Set2") +
+  # 添加周围注释文字，此处是基因名gene
+  geom_node_text(
+    aes(
+      x = 1.048 * x, #控制字跟点的距离
+      y = 1.048 * y, #控制字跟点的距离
+      label = node.short_name,
+      angle = -((-node_angle(x, y) + 90) %% 180) + 90,
+      filter = leaf,
+      color = node.branch
+      ),
+    size = 2, hjust = 'outward') +
+
+  # 添加内环文字，此处是通路名term
+  geom_node_text(
+    aes(label = node.short_name,
+        color = node.branch,
+        filter = !leaf & (node.level != "all")
+    ),
+    fontface="bold",
+    size=4,
+    family="sans"
+  ) +
+  theme(panel.background = element_rect(fill = NA)) +
+  coord_cartesian(xlim=c(-1.3,1.3),ylim = c(-1.3,1.3)) #扩大坐标系
+ggsave(gc1,filename = "step2.dna.int.circle.pre.pdf",width = 6,height = 6)
+
+
+
+df <- read.table("step2.dna.int.circle.acx1.txt",header = T)
+colnames(df) <- c("term","genes","logFC")
+df$term <- factor(df$term,levels = c("Stem Cell","Early Luminal Progenitor", "Late Luminal Progenitor" ,
+                                     "Myoepithelial Progenitor","Ductal"))
+nl <- rep(1:length(unique(df$genes)))
+nl <- paste0("Barcode",nl)
+df$genes <- factor(df$genes,labels = nl)
+library(conflicted)
+conflict_prefer("select", "dplyr")
+nodes <- gather_graph_node(df, index = c("term", "genes"), value = "logFC", root="all")
+edges <- gather_graph_edge(df, index = c("term", "genes"), root = "all")
+nodes <- nodes %>% mutate_at(c("node.level","node.branch"),as.character)
+head(nodes, 10)
+graph <- tbl_graph(nodes, edges)
+# 用 `ggraph` 出图
+gc2 <- ggraph(graph, layout = 'dendrogram', circular = TRUE) +
+  # 使用 filter 参数去掉 root（前面设置为"all"）节点及与其相连的边
+  geom_edge_diagonal(aes(color = node1.node.branch,
+                         filter=node1.node.level!="all"),
+                     alpha = 0.6,edge_width=0.5) +
+  geom_node_point(aes(size = node.size,
+                      color = node.branch,
+                      filter=node.level!="all"), alpha = 0.5) +
+  scale_size(range = c(1,40)) + #做均一化处理，让点的大小介于range之间
+  theme(legend.position = "none") + #不画图例
+
+  # 点和边的配色
+  # 如果要改变边的配色，需要同时给边和点变色，否则会对应不上
+  scale_edge_color_brewer(palette = "Set2") + #用?scale_color_brewer查看更多配色方案
+  scale_color_brewer(palette = "Set2") +
+  # 添加周围注释文字，此处是基因名gene
+  geom_node_text(
+    aes(
+      x = 1.048 * x, #控制字跟点的距离
+      y = 1.048 * y, #控制字跟点的距离
+      label = node.short_name,
+      angle = -((-node_angle(x, y) + 90) %% 180) + 90,
+      filter = leaf,
+      color = node.branch
+      ),
+    size = 2, hjust = 'outward') +
+
+  # 添加内环文字，此处是通路名term
+  geom_node_text(
+    aes(label = node.short_name,
+        color = node.branch,
+        filter = !leaf & (node.level != "all")
+    ),
+    fontface="bold",
+    size=4,
+    family="sans"
+  ) +
+  theme(panel.background = element_rect(fill = NA)) +
+  coord_cartesian(xlim=c(-1.3,1.3),ylim = c(-1.3,1.3)) #扩大坐标系
+ggsave(gc2,filename = "step2.dna.int.circle.ac6.pdf",width = 6,height = 6)
+
+
+
+df <- read.table("step2.dna.int.circle.acx2.txt",header = T)
+colnames(df) <- c("term","genes","logFC")
+df$term <- factor(df$term,levels = c("Stem Cell","Early Luminal Progenitor", "Late Luminal Progenitor" ,
+                                     "Myoepithelial Progenitor","Ductal"))
+nl <- rep(1:length(unique(df$genes)))
+nl <- paste0("Barcode",nl)
+df$genes <- factor(df$genes,labels = nl)
+library(conflicted)
+conflict_prefer("select", "dplyr")
+nodes <- gather_graph_node(df, index = c("term", "genes"), value = "logFC", root="all")
+edges <- gather_graph_edge(df, index = c("term", "genes"), root = "all")
+nodes <- nodes %>% mutate_at(c("node.level","node.branch"),as.character)
+head(nodes, 10)
+graph <- tbl_graph(nodes, edges)
+# 用 `ggraph` 出图
+gc3 <- ggraph(graph, layout = 'dendrogram', circular = TRUE) +
+  # 使用 filter 参数去掉 root（前面设置为"all"）节点及与其相连的边
+  geom_edge_diagonal(aes(color = node1.node.branch,
+                         filter=node1.node.level!="all"),
+                     alpha = 0.6,edge_width=0.5) +
+  geom_node_point(aes(size = node.size,
+                      color = node.branch,
+                      filter=node.level!="all"), alpha = 0.5) +
+  scale_size(range = c(1,40)) + #做均一化处理，让点的大小介于range之间
+  theme(legend.position = "none") + #不画图例
+
+  # 点和边的配色
+  # 如果要改变边的配色，需要同时给边和点变色，否则会对应不上
+  scale_edge_color_brewer(palette = "Set2") + #用?scale_color_brewer查看更多配色方案
+  scale_color_brewer(palette = "Set2") +
+  # 添加周围注释文字，此处是基因名gene
+  geom_node_text(
+    aes(
+      x = 1.048 * x, #控制字跟点的距离
+      y = 1.048 * y, #控制字跟点的距离
+      label = node.short_name,
+      angle = -((-node_angle(x, y) + 90) %% 180) + 90,
+      filter = leaf,
+      color = node.branch
+      ),
+    size = 2, hjust = 'outward') +
+
+  # 添加内环文字，此处是通路名term
+  geom_node_text(
+    aes(label = node.short_name,
+        color = node.branch,
+        filter = !leaf & (node.level != "all")
+    ),
+    fontface="bold",
+    size=4,
+    family="sans"
+  ) +
+  theme(panel.background = element_rect(fill = NA)) +
+  coord_cartesian(xlim=c(-1.3,1.3),ylim = c(-1.3,1.3)) #扩大坐标系
+ggsave(gc3,filename = "step2.dna.int.circle.acx2.pdf",width = 6,height = 6)

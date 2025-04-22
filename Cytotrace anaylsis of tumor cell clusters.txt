@@ -1,0 +1,83 @@
+library(ggplot2)
+library(viridis)
+library(ggpubr)
+library(CytoTRACE)
+#(1)计算cytotrace score
+rm(list=ls())
+setwd("E:/SCS/2022 PROJECT1/PART2 STEMNESS/result/Step1.CytoTRACE")
+load("part2.all.harmony.tsne.filtered.anno3.selected.RData")
+data2 <- subset(test.seu,data == "sc5")
+data3 <- subset(test.seu,data == "BIO")
+expr1 <- as.matrix(data1@assays$RNA@counts)
+expr2 <- as.matrix(data2@assays$RNA@counts)
+expr3 <- as.matrix(data3@assays$RNA@counts)
+datasets <- list(expr1,expr2,expr3)
+results <- iCytoTRACE(datasets, ncores = 1, subsamplesize = 1000,enableFast = FALSE)
+save(results,file="part0.cytotrace.selected.result.RData")
+
+#(2)CytoTRACE结果可视化
+library(CytoTRACE)
+rm(list=ls())
+setwd("E:/SCS/2022 PROJECT1/PART2 STEMNESS/result/Step1.CytoTRACE")
+load("part0.cytotrace.selected.result.RData")
+load("E:/SCS/2022 PROJECT1/PART1 CLUSTER/RESULT/Step8.Normalize+NES+reduction/part1.integrate.nes.tsne.pdata.k=7.RData")
+load("E:/SCS/2022 PROJECT1/PART3 IMMUNE/RESULTS/221018.v2.0/Step2.ImmuneCellAnnonation/v221020/part2.all.harmony.tsne.filtered.anno3.RData")
+cyto <- data.frame(result$CytoTRACE)
+pdat <- test.seu@meta.data
+cs <- intersect(rownames(pdat),rownames(cyto))
+pdat <- pdat[cs,]
+cyto <- cyto[cs,]
+toplot <- data.frame(cbind(pdat$celltype,cyto))
+toplot$scPC <- factor(toplot$V1,levels=c(1,2,3,4,5,6,7), labels= c("C1","C2","C3","C4","C5","C6","C7"))
+
+toplot$Population <- as.factor(toplot$scPC)
+pdf("part0.violin_cytotrace.pdf")
+ggplot(toplot, aes(x = Population, y = cyto, fill = Population, color = Population)) +
+  geom_violin(scale = "width", trim = T, adjust = 1) +
+  geom_boxplot(width = .05, col = "black", fill = "white", outlier.alpha = 0) +
+  labs(title = "CytoTRACE", y = "CytoTRACE", x = "consClust") +
+  theme_classic() +
+  scale_color_manual(values = c("#FF0099", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#CC79A7")) +
+  scale_fill_manual(values = c("#FF0099", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#CC79A7")) +
+  stat_compare_means(aes(group = Population), method = "kruskal.test", label.y = max(toplot$cyto) + 0.2) +
+  theme(legend.title = element_blank()) +
+  theme(axis.title.y = element_text(size = rel(1.25))) +
+  theme(axis.title.x = element_text(size = rel(1.25))) +
+  theme(axis.text.y = element_text(size = rel(1.25))) +
+  theme(axis.text.x = element_text(size = rel(1.25)))
+dev.off()
+
+
+cyto <- result$CytoTRACE
+cs <- intersect(names(cyto),rownames(pdat))
+cyto <- cyto[cs]
+pdat <- pdat[cs,]
+toplot <- data.frame(cbind(pdat$Y1,pdat$Y2,cyto))
+colnames(toplot) <- c("Y1","Y2","cyto")
+p1 <- ggplot(toplot, aes(Y1, Y2)) +
+  geom_point(aes(Y1, Y2, color = cyto), shape = 16, size = 0.5) +
+  scale_color_distiller(palette = "Spectral") +
+  #scale_color_gradient(low = "green",high = "red")+
+  theme_classic() +
+  theme(legend.position = "top") +
+  labs(title = "CytoTRACE", y = "tSNE_2", x = "tSNE_1", color = "CytoTRACE") +
+  theme_classic() +
+  theme(panel.border = element_rect(fill=NA,color="black", size=1, linetype="solid"),
+        #axis.line = element_line(colour = "#000000", size = 1),
+        axis.line = element_blank(),
+        axis.ticks.length = unit(0.1, 'cm'),
+        axis.text = element_text(colour = "#000000", size = 20),
+        axis.title = element_text(size = 20),
+        legend.text = element_text(size = 20),
+        legend.title = element_text(size = 20),
+        panel.grid = element_blank())+
+  annotate("text", label = "C1", x = -20, y = -10, size = 6, colour = "black") +
+  annotate("text", label = "C2", x = 0, y = 10, size = 6, colour = "black") +
+  annotate("text", label = "C3", x = -10, y = 25, size = 6, colour = "black") +
+  annotate("text", label = "C4", x = 8, y = 18, size = 6, colour = "black") +
+  annotate("text", label = "C5", x = -30, y = 0, size = 6, colour = "black") +
+  annotate("text", label = "C6", x = 0, y = -25, size = 6, colour = "black") +
+  annotate("text", label = "C7", x = 20, y = 0, size = 6, colour = "black")
+pdf("part1.integrate.icytotrace.tsne.k=7.pdf",height = 8,width = 10)
+p1
+dev.off()

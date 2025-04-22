@@ -1,0 +1,17 @@
+data <- read.table("Figure 6A.txt",)
+otu_melt <- melt(data)
+names(otu_melt) = c('barcode', 'drug', 'Abundance')
+palette <- brewer.pal(8, "Set2")
+palette <- rep(palette, length.out = nrow(all))
+pdf("step1.ws.0.001.bubble plot.0.005_0.008.pdf", height = 6, width = 9)
+ggplot(otu_melt, aes(x = drug, y = barcode, size = Abundance, color = barcode)) +
+  geom_point(show.legend = NA, alpha = 0.6, position = position_jitterdodge(jitter.width = 0.4, dodge.width = 0)) +
+  scale_size(range = c(1, 10), name = "Abundance") +
+  scale_fill_manual(values = palette, guide = "none") +
+  scale_color_manual(values = palette, guide = "none") +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_line(colour = NULL),
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA))
+while (!is.null(dev.list()))  dev.off()
